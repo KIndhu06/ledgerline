@@ -1,9 +1,15 @@
 require('dotenv').config();
 const express = require('express');
+const helmet = require('helmet');
 const pool = require('./db');
+const authRoutes = require('./authRoutes');
+const { authenticate, requireRole } = require('./auth');
 
 const app = express();
-app.use(express.json());
+app.disable('x-powered-by');
+app.set('trust proxy', 1);
+app.use(helmet());
+app.use(express.json({ limit: '10kb' }));
 
 app.get('/api/health', async (req, res) => {
   try {
@@ -13,6 +19,29 @@ app.get('/api/health', async (req, res) => {
     console.error(err.message);
     res.status(500).json({ status: 'error', database: 'unreachable' });
   }
+});
+
+app.use('/api/auth', authRoutes);
+
+app.get('/api/me', authenticate, (req, res) => {
+  res.json(req.user);
+});
+
+// Temporary route used only to test role checks. We delete it later.
+app.get('/api/admin/ping', authenticate, requireRole('admin'), (req, res) => {
+  res.json({ ok: true });
+});
+
+app.use((req, res) => {
+  res.status(404).json({ error: 'Not found' });
+});
+
+app.use((err, req, res, next) => {
+  console.error(err.message);
+  if (err.type === 'entity.parse.failed') {
+    return res.status(400).json({ error: 'Invalid JSON.' });
+  }
+  res.status(500).json({ error: 'Internal server error' });
 });
 
 const PORT = process.env.PORT || 3000;
