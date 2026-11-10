@@ -4,6 +4,7 @@ const helmet = require('helmet');
 const pool = require('./db');
 const authRoutes = require('./authRoutes');
 const accountRoutes = require('./accounts');
+const transactionRoutes = require('./transactions');
 const { authenticate, requireRole } = require('./auth');
 
 const app = express();
@@ -24,6 +25,7 @@ app.get('/api/health', async (req, res) => {
 
 app.use('/api/auth', authRoutes);
 app.use('/api/accounts', accountRoutes);
+app.use('/api/transactions', transactionRoutes);
 
 app.get('/api/me', authenticate, (req, res) => {
   res.json(req.user);

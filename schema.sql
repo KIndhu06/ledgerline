@@ -50,6 +50,7 @@ CREATE TABLE IF NOT EXISTS audit_log (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+-- Append-only protection: block UPDATE, DELETE and TRUNCATE on the record tables
 CREATE OR REPLACE FUNCTION block_changes() RETURNS trigger AS $$
 BEGIN
   RAISE EXCEPTION 'The table % is append-only: % is not allowed', TG_TABLE_NAME, TG_OP;
@@ -68,6 +69,38 @@ CREATE OR REPLACE TRIGGER audit_log_append_only
   BEFORE UPDATE OR DELETE ON audit_log
   FOR EACH ROW EXECUTE FUNCTION block_changes();
 
+CREATE OR REPLACE TRIGGER transactions_no_truncate
+  BEFORE TRUNCATE ON transactions
+  FOR EACH STATEMENT EXECUTE FUNCTION block_changes();
+
+CREATE OR REPLACE TRIGGER ledger_entries_no_truncate
+  BEFORE TRUNCATE ON ledger_entries
+  FOR EACH STATEMENT EXECUTE FUNCTION block_changes();
+
+CREATE OR REPLACE TRIGGER audit_log_no_truncate
+  BEFORE TRUNCATE ON audit_log
+  FOR EACH STATEMENT EXECUTE FUNCTION block_changes();
+
+-- Every transaction's ledger entries must add up to exactly zero
+CREATE OR REPLACE FUNCTION check_transaction_balanced() RETURNS trigger AS $$
+DECLARE total BIGINT;
+BEGIN
+  SELECT COALESCE(SUM(amount), 0) INTO total
+    FROM ledger_entries WHERE transaction_id = NEW.transaction_id;
+  IF total <> 0 THEN
+    RAISE EXCEPTION 'Transaction % is not balanced (sum is %)', NEW.transaction_id, total;
+  END IF;
+  RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS ledger_entries_balanced ON ledger_entries;
+CREATE CONSTRAINT TRIGGER ledger_entries_balanced
+  AFTER INSERT ON ledger_entries
+  DEFERRABLE INITIALLY DEFERRED
+  FOR EACH ROW EXECUTE FUNCTION check_transaction_balanced();
+
+-- The special bank account that is the other side of deposits and withdrawals
 INSERT INTO accounts (name, balance, is_system)
 SELECT 'BANK CASH', 0, true
 WHERE NOT EXISTS (SELECT 1 FROM accounts WHERE is_system);
