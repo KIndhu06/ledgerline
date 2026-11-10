@@ -5,7 +5,8 @@ const pool = require('./db');
 const authRoutes = require('./authRoutes');
 const accountRoutes = require('./accounts');
 const transactionRoutes = require('./transactions');
-const { authenticate, requireRole } = require('./auth');
+const adminRoutes = require('./admin');
+const { authenticate } = require('./auth');
 
 const app = express();
 app.disable('x-powered-by');
@@ -26,14 +27,10 @@ app.get('/api/health', async (req, res) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/accounts', accountRoutes);
 app.use('/api/transactions', transactionRoutes);
+app.use('/api/admin', adminRoutes);
 
 app.get('/api/me', authenticate, (req, res) => {
   res.json(req.user);
-});
-
-// Temporary route used only to test role checks. We delete it later.
-app.get('/api/admin/ping', authenticate, requireRole('admin'), (req, res) => {
-  res.json({ ok: true });
 });
 
 app.use((req, res) => {
