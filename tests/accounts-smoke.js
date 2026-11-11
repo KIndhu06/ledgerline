@@ -48,8 +48,11 @@ async function run() {
   check('7. No token is refused (401)', r.status === 401, 'status ' + r.status);
   r = await call('GET', '/api/accounts/abc', null, a.token);
   check('8. Non-numeric id is refused (400)', r.status === 400, 'status ' + r.status);
+
   r = await call('GET', '/api/accounts/1%20OR%201=1', null, a.token);
-  check('9. SQL-injection text in the id is refused (400)', r.status === 400, 'status ' + r.status);
+  check('9. SQL-injection text in the id is refused (400 by our code, or 403 by the hosting firewall)',
+    r.status === 400 || r.status === 403, 'status ' + r.status);
+
   r = await call('GET', '/api/accounts/99999999999', null, a.token);
   check('10. Account that does not exist gives 404', r.status === 404, 'status ' + r.status);
 

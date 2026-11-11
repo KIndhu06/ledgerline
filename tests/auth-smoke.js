@@ -73,7 +73,7 @@ async function run() {
   check('10. /api/me with a valid token works', r.status === 200 && r.data && r.data.email === email, 'status ' + r.status);
 
   // 11. Holder cannot use an admin route
-  r = await call('GET', '/api/admin/ping', null, token);
+  r = await call('GET', '/api/admin/users', null, token);
   check('11. Holder is blocked from admin route (403)', r.status === 403, 'status ' + r.status);
 
   // 12. Tampered token
