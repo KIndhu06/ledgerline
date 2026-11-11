@@ -3,10 +3,11 @@
   "version": "1.0.0",
   "description": "",
   "main": "server.js",
-  "scripts": {
-    "migrate": "node migrate.js",
-    "start": "node migrate.js && node server.js"
-  },
+ "scripts": {
+  "migrate": "node migrate.js",
+  "seed": "node seed.js",
+  "start": "node migrate.js && node seed.js && node server.js"
+},
   "keywords": [],
   "author": "",
   "license": "ISC",
