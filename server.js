@@ -14,6 +14,15 @@ app.set('trust proxy', 1);
 app.use(helmet());
 app.use(express.json({ limit: '10kb' }));
 
+app.get('/', (req, res) => {
+  res.json({
+    name: 'LedgerLine',
+    status: 'running',
+    health: '/api/health',
+    docs: 'https://github.com/KIndhu06/ledgerline#readme',
+  });
+});
+
 app.get('/api/health', async (req, res) => {
   try {
     await pool.query('SELECT 1');
