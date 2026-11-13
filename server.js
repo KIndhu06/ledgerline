@@ -1,4 +1,5 @@
 require('dotenv').config();
+const path = require('path');
 const express = require('express');
 const helmet = require('helmet');
 const pool = require('./db');
@@ -14,14 +15,8 @@ app.set('trust proxy', 1);
 app.use(helmet());
 app.use(express.json({ limit: '10kb' }));
 
-app.get('/', (req, res) => {
-  res.json({
-    name: 'LedgerLine',
-    status: 'running',
-    health: '/api/health',
-    docs: 'https://github.com/KIndhu06/ledgerline#readme',
-  });
-});
+// The web page: public/index.html, styles.css and app.js
+app.use(express.static(path.join(__dirname, 'public')));
 
 app.get('/api/health', async (req, res) => {
   try {
