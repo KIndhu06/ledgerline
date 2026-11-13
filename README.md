@@ -1,6 +1,6 @@
 # LedgerLine
 
-A small banking backend where money moves safely. Deposits, withdrawals and
+A small banking system where money moves safely. Deposits, withdrawals and
 transfers are recorded in a double-entry ledger. The same request never pays
 twice, simultaneous withdrawals cannot overdraw an account, and the wrong
 person cannot move money that is not theirs.
@@ -10,10 +10,14 @@ Health check: https://ledgerline-4lky.onrender.com/api/health
 
 The live site runs on a free Render plan. After 15 minutes without traffic it
 goes to sleep, so the first request can take about a minute. The free
-database also expires after 30 days.
+database also expires 30 days after it was created.
 
 ## What works
 
+- A web page at the live address: sign in or create an account, see your
+  accounts and balances, deposit, withdraw, transfer, and read statements.
+  Admin and auditor get read-only views (all accounts, reconcile check,
+  audit log, and for admin a user list).
 - Register and log in (passwords hashed with bcrypt, login tokens expire after 1 hour)
 - Three roles: `holder`, `auditor`, `admin`, enforced on the server
 - Holders create accounts (up to 5) and can only see and use their own
@@ -24,17 +28,29 @@ database also expires after 30 days.
 - Locking, so simultaneous requests take turns and cannot overdraw
 - Append-only audit trail and ledger (the database refuses UPDATE, DELETE and TRUNCATE)
 - Admin and auditor are read-only: reconcile check, audit log, user list
-- Automated tests (listed below)
+- Automated API tests (listed below)
 
 See `THREATS.md` for the threats I defend against, the tests that prove each
 one, and what is NOT covered. See `PROMPTS.md` for where the AI was wrong.
 
 ## Not finished
 
-- No web page yet. The system is used through its API (examples below).
-- No refresh tokens or logout, no password reset, no email verification.
+- No demo video.
+- The web page keeps the login token in memory only, so refreshing the page
+  signs you out. I tested the page by hand. There are no automated browser tests.
+- No refresh tokens or logout on the server side, no password reset, no email verification.
 - Rate limits are kept in server memory and reset when the server restarts.
 - The 5-account limit can be slightly exceeded by many simultaneous requests.
+
+## Using the web page
+
+Open the live address. Choose "Create account" to make a holder account, then
+create an account, deposit, withdraw or transfer. For a transfer, enter the
+other account's number. Amounts are in rupees (up to 2 decimals, maximum
+10,00,000 per request).
+
+Admin and auditor accounts cannot be created on the page. They are created by
+the seed script (see "Staff accounts").
 
 ## API
 
@@ -81,8 +97,8 @@ Sending the same command again returns the same result and moves no money.
 
 ## Staff accounts
 
-Admin and auditor accounts cannot be created through the API. They are created
-by `seed.js` when the server starts, using these emails:
+Admin and auditor accounts cannot be created through the API or the web page.
+They are created by `seed.js` when the server starts, using these emails:
 
 - `admin@ledgerline.local`
 - `auditor@ledgerline.local`
@@ -137,8 +153,8 @@ npm start
 ```
 
 This creates the tables, creates the admin and auditor accounts, and starts
-the server at http://localhost:3000. You should see `Database schema is ready`
-and `LedgerLine running on port 3000`.
+the server. Open http://localhost:3000 for the web page. You should see
+`Database schema is ready` and `LedgerLine running on port 3000` in the terminal.
 
 ## Tests
 

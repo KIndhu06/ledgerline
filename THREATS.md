@@ -16,24 +16,27 @@ Tests live in `tests/`. Run them with the server running (see README).
 | 4 | Withdrawing more than the balance | Server-side check returns 422, and the database refuses a negative balance even if the code is wrong. | money-smoke 7, 8 |
 | 5 | A user moves money from someone else's account | The owner comes from the login token, never from the request. Someone else's account returns 404, so account numbers cannot be guessed. | money-smoke 9, 10; accounts-smoke 5, 6 |
 | 6 | A user makes themselves admin or auditor | Registration always gives the `holder` role and ignores any `role` field. Admin and auditor accounts only come from a seed script using passwords from environment variables. | auth-smoke 3; admin-smoke 20 |
-| 7 | Role checks done only in the browser | Every route checks the role on the server. The role is loaded from the database on every request, not trusted from the token. | auth-smoke 11; admin-smoke 3 to 6 |
+| 7 | Role checks done only in the browser | Every route checks the role on the server. The role is loaded from the database on every request, not trusted from the token. The web page only hides things for convenience. | auth-smoke 11; admin-smoke 3 to 6 |
 | 8 | Admin or auditor account used to steal money | Both roles are read-only. They cannot deposit, withdraw, transfer or create accounts. | admin-smoke 14, 15, 16 |
 | 9 | Forged, edited or unsigned login tokens | Tokens are signed (HS256) and only that algorithm is accepted. The server will not start if the signing secret is missing or shorter than 32 characters. | auth-smoke 12, 13 |
 | 10 | Changing or deleting ledger history | Triggers block UPDATE, DELETE and TRUNCATE on `transactions`, `ledger_entries` and `audit_log`. | money-smoke 26, 27, 28 |
 | 11 | A one-sided transaction that creates or destroys money | A deferred database trigger refuses any transaction whose ledger entries do not add up to exactly zero. | money-smoke 29 |
 | 12 | Balances drifting away from the ledger | `/api/admin/reconcile` recomputes every balance from the ledger and reports mismatches. Tests check that the ledger total is 0 and each balance matches its entries. | money-smoke 23, 24, 25; admin-smoke 7, 8 |
-| 13 | Bad amounts (0, negative, decimals, text, huge) | Amounts must be whole numbers of paise between 1 and 100,000,000. | money-smoke 6 |
+| 13 | Bad amounts (0, negative, decimals, text, huge) | Amounts must be whole numbers of paise between 1 and 100,000,000. The web page also converts rupees to paise with whole-number maths, not decimals. | money-smoke 6 |
 | 14 | SQL injection | Every query uses `$1` placeholders. Ids in URLs must match a strict number pattern. | accounts-smoke 8, 9 |
 | 15 | Password guessing and account probing | bcrypt password hashing. Login and register are rate limited. Wrong password and unknown email give the same error. Failed logins go to the audit log. | auth-smoke 6, 7 |
 | 16 | Secrets leaking | `.env` is in `.gitignore`. Error responses are generic and never show stack traces. Password hashes are never returned. | auth-smoke 2, 14a; admin-smoke 10, 13 |
 | 17 | Nobody can tell who moved money | Every transaction stores who created it. Every money movement, registration, login and failed login writes to the append-only audit log. | admin-smoke 9 |
+| 18 | Script injection on the web page (XSS) through account names or emails | The page builds its screens with `textContent` and element creation, never `innerHTML`, so text from the server is shown as text. The server also sends a security header (from helmet) that only allows scripts from its own address. | Checked by hand: an account named `<b>test</b>` shows as plain text. No automated test. |
+| 19 | Login token stolen from the browser | The web page keeps the token in memory only, not in localStorage or cookies. Tokens also expire after 1 hour. | By design. No automated test. |
 
 ## Not covered, or only partly covered
 
 - The app's database user owns the tables, so someone who got full control of
   that user could remove the triggers. Free hosting gives one database user.
   With a paid database I would use a separate, limited user for the app.
-- There is no refresh-token or logout system. Tokens simply expire after one hour.
+- There is no refresh-token or logout system on the server. Tokens simply expire after one hour.
+- Because the token is kept in memory only, refreshing the web page signs you out.
 - The limit of 5 accounts per user could be slightly exceeded by many
   simultaneous requests.
 - Rate limits are kept in server memory, so they reset on restart and are per
@@ -44,5 +47,7 @@ Tests live in `tests/`. Run them with the server running (see README).
   attack text (for example SQL-injection-looking URLs) with a 403 before it
   reaches my code. I did not build that layer. My own code rejects the same
   input with a 400 (accounts-smoke 9 locally).
+- The web page was tested by hand only. There are no automated browser tests,
+  and I did not test it on many browsers or devices.
 - No email verification, password reset or two-factor login.
 - I have not done a professional penetration test or load test.
